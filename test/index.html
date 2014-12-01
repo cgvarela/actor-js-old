@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Actor WS demo</title>
+    <!--<link rel="shortcut icon" href="https://raw.githubusercontent.com/OlegIlyenko/scala-icon/master/akka-icon.png" />-->
+    <script src="/bower_components/angular/angular.min.js"></script>
+    <script src="/bower_components/forge/js/forge.min.js"></script>
+    <script src="/bower_components/long/dist/Long.js"></script>
+    <script src="/bower_components/bytebuffer/dist/ByteBufferAB.js"></script>
+    <script src="/bower_components/lodash/dist/lodash.js"></script>
+    <script src="/bower_components/crc-32/crc32.js"></script>
+    <script src="/release/codecs.js"></script>
+    <script src="/release/schema/ActorMessages.js"></script>
+    <script src="/release/api.js"></script>
+    <script src="/test/main.js"></script>
+</head>
+<body ng-app="test">
+  <div ng-controller="WSController">
+    <div ng-hide="publicKey && privateKey">
+      <button ng-click="genKeys()">Generate Keys</button>
+    </div>
+
+    <div>
+      <label>Public key: <small>{{ publicKeyBase64 }}</small></label><br>
+      <label>Private key: <small>{{ privateKeyBase64 }}</small></label>
+    </div>
+
+    <div ng-show="publicKey && privateKey">
+      <div ng-hide="user">
+        <button ng-hide="smsHash" ng-click="getSmsCode()" autofocus="true">Get SMS Code</button>
+
+        <input ng-cloak ng-show="smsHash" id="smsCode" ng-model="smsCode" placeholder="sms code" />
+        <input ng-cloak ng-show="smsHash" id="phoneNumber" ng-model="phoneNumber" placeholder="sms code" />
+        <input ng-cloak ng-show="smsHash" id="userName" ng-model="userName" placeholder="Name" />
+        <button ng-cloak ng-show="smsHash" ng-click="signIn()" ng-disabled="!smsCode || !phoneNumber" autofocus="true">Sign In/Up</button>
+      </div>
+
+      <div ng-cloak ng-show="user">
+        <header>User</header>
+        <ul>
+          <li><label>Name: {{ user.name }}</label></li>
+          <li><label>Phone: {{ user.phoneNumber }}</label></li>
+          <li><label>Key hashes: {{ user.keyHashes }}</label></li>
+        </ul>
+        <button ng-click="importContacts()">Import Contacts</button>
+      </div>
+
+      <div ng-cloak ng-show="importedContacts">
+        <header>Imported Contacts:</header>
+        <div>
+          <header>Users:</header>
+          <ul>
+            <li ng-repeat="user in importedContacts">
+              <label>{{ user.uid }}#{{ user.name }} {{ user.phoneNumber }}</label>
+              <button ng-click="importPublicKeys(user)">Import Public Keys</button>
+              <button ng-show="user.canSendMessage" ng-click="sendMessage(user)">Send Message</button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div ng-cloak ng-show="user">
+        <header>Updates</header>
+        <div id="updates"></div>
+    </div>
+  </div>
+</body>
+</html>
