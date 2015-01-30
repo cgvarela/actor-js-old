@@ -1,4 +1,4 @@
-# Automatically generated at Mon Dec 01 05:16:26 MSK 2014
+# Automatically generated at Fri Jan 30 13:41:00 ICT 2015
 
 
 class ServiceExtension
@@ -12,7 +12,7 @@ class ServiceExtension
   @decode: (buf) ->
     header = int8.decode(buf).value
     bodyBytes = bytes.decode(buf).value
-    child = [ServiceExUserAdded,ServiceExUserKicked,ServiceExUserLeft,ServiceExGroupCreated,ServiceExChangedTitle,ServiceExChangedAvatar]
+    child = [ServiceExUserAdded,ServiceExUserKicked,ServiceExUserLeft,ServiceExGroupCreated,ServiceExChangedTitle,ServiceExChangedAvatar,ServiceExEmailContactRegistered]
     for klass in child
       return klass.decode(bodyBytes) if header == klass.header
     throw new Error("Unknown message header: #{header}")
@@ -63,7 +63,7 @@ class UpdateMessage
   @decode: (buf) ->
     header = int8.decode(buf).value
     bodyBytes = bytes.decode(buf).value
-    child = [UpdateUserAvatarChanged,UpdateUserNameChanged,UpdateUserLocalNameChanged,UpdateContactRegistered,UpdateContactsAdded,UpdateContactsRemoved,UpdateEncryptedMessage,UpdateMessage,UpdateMessageSent,UpdateEncryptedReceived,UpdateEncryptedRead,UpdateEncryptedReadByMe,UpdateMessageReceived,UpdateMessageRead,UpdateMessageReadByMe,UpdateMessageDelete,UpdateChatClear,UpdateChatDelete,UpdateGroupInvite,UpdateGroupUserAdded,UpdateGroupUserLeave,UpdateGroupUserKick,UpdateGroupMembersUpdate,UpdateGroupTitleChanged,UpdateGroupAvatarChanged,UpdateNewDevice,UpdateRemovedDevice,UpdateTyping,UpdateUserOnline,UpdateUserOffline,UpdateUserLastSeen,UpdateGroupOnline,UpdateConfig]
+    child = [UpdateUserAvatarChanged,UpdateUserNameChanged,UpdateUserLocalNameChanged,UpdateUserPhoneAdded,UpdateUserPhoneRemoved,UpdatePhoneTitleChanged,UpdatePhoneMoved,UpdateUserEmailAdded,UpdateUserEmailRemoved,UpdateEmailTitleChanged,UpdateEmailMoved,UpdateUserContactsChanged,UpdateUserStateChanged,UpdateContactRegistered,UpdateEmailContactRegistered,UpdateContactsAdded,UpdateContactsRemoved,UpdateEncryptedMessage,UpdateMessage,UpdateMessageSent,UpdateEncryptedReceived,UpdateEncryptedRead,UpdateEncryptedReadByMe,UpdateMessageReceived,UpdateMessageRead,UpdateMessageReadByMe,UpdateMessageDelete,UpdateChatClear,UpdateChatDelete,UpdateGroupInvite,UpdateGroupUserAdded,UpdateGroupUserLeave,UpdateGroupUserKick,UpdateGroupMembersUpdate,UpdateGroupTitleChanged,UpdateGroupAvatarChanged,UpdateNewDevice,UpdateRemovedDevice,UpdateTyping,UpdateUserOnline,UpdateUserOffline,UpdateUserLastSeen,UpdateGroupOnline,UpdateConfig]
     for klass in child
       return klass.decode(bodyBytes) if header == klass.header
     throw new Error("Unknown message header: #{header}")
@@ -97,7 +97,7 @@ class RpcRequestMessage
   @decode: (buf) ->
     header = int32.decode(buf).value
     bodyBytes = bytes.decode(buf).value
-    child = [RequestSendAuthCode,RequestSendAuthCall,RequestSignIn,RequestSignUp,RequestGetAuthSessions,RequestTerminateSession,RequestTerminateAllSessions,RequestSignOut,RequestEditUserLocalName,RequestEditName,RequestEditAvatar,RequestRemoveAvatar,RequestImportContacts,RequestGetContacts,RequestRemoveContact,RequestAddContact,RequestSearchContacts,RequestSendEncryptedMessage,RequestSendMessage,RequestEncryptedReceived,RequestEncryptedRead,RequestMessageReceived,RequestMessageRead,RequestDeleteMessage,RequestClearChat,RequestDeleteChat,RequestCreateGroup,RequestEditGroupTitle,RequestEditGroupAvatar,RequestRemoveGroupAvatar,RequestInviteUser,RequestLeaveGroup,RequestDeleteGroup,RequestRemoveUser,RequestLoadHistory,RequestLoadDialogs,RequestGetPublicKeys,RequestTyping,RequestSetOnline,RequestGetFile,RequestStartUpload,RequestUploadPart,RequestCompleteUpload,RequestRegisterGooglePush,RequestRegisterApplePush,RequestUnregisterPush,RequestGetState,RequestGetDifference,RequestSubscribeToOnline,RequestSubscribeFromOnline,RequestSubscribeToGroupOnline,RequestSubscribeFromGroupOnline]
+    child = [RequestSendAuthCode,RequestSendAuthCall,RequestSignIn,RequestSignUp,RequestGetAuthSessions,RequestTerminateSession,RequestTerminateAllSessions,RequestSignOut,RequestEditUserLocalName,RequestEditName,RequestEditAvatar,RequestRemoveAvatar,RequestSendEmailCode,RequestDetachEmail,RequestChangePhoneTitle,RequestChangeEmailTitle,RequestImportContacts,RequestGetContacts,RequestRemoveContact,RequestAddContact,RequestSearchContacts,RequestSendEncryptedMessage,RequestSendMessage,RequestEncryptedReceived,RequestEncryptedRead,RequestMessageReceived,RequestMessageRead,RequestDeleteMessage,RequestClearChat,RequestDeleteChat,RequestCreateGroup,RequestEditGroupTitle,RequestEditGroupAvatar,RequestRemoveGroupAvatar,RequestInviteUser,RequestLeaveGroup,RequestKickUser,RequestLoadHistory,RequestLoadDialogs,RequestGetPublicKeys,RequestTyping,RequestSetOnline,RequestGetFile,RequestStartUpload,RequestUploadPart,RequestCompleteUpload,RequestRegisterGooglePush,RequestRegisterApplePush,RequestUnregisterPush,RequestGetState,RequestGetDifference,RequestSubscribeToOnline,RequestSubscribeFromOnline,RequestSubscribeToGroupOnline,RequestSubscribeFromGroupOnline]
     for klass in child
       return klass.decode(bodyBytes) if header == klass.header
     throw new Error("Unknown message header: #{header}")
@@ -128,11 +128,28 @@ class Sex
   @schema: ['Unknown','Male','Female']
 
         
+class UserState
+  @Registered: 1
+  @Email: 2
+  @Deleted: 3
+
+  @schema: ['Registered','Email','Deleted']
+
+        
+class MessageState
+  @Sent: 1
+  @Received: 2
+  @Read: 3
+
+  @schema: ['Sent','Received','Read']
+
+        
 class PeerType
   @Private: 1
   @Group: 2
+  @Email: 3
 
-  @schema: ['Private','Group']
+  @schema: ['Private','Group','Email']
 
         
 class RequestSendAuthCode extends RpcRequestMessage
@@ -336,6 +353,70 @@ class RequestRemoveAvatar extends RpcRequestMessage
 
   @decode: (bodyBytes) ->
     Protobuf.decode("RequestRemoveAvatar", bodyBytes)
+
+    
+class RequestSendEmailCode extends RpcRequestMessage
+  @header: 0x78
+
+  @schema:
+    email: { n: 1, type: "string", rule: "required" }
+    description: { n: 2, type: "string", rule: "optional" }
+
+  constructor: (@email, @description) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("RequestSendEmailCode", bodyBytes)
+
+    
+class RequestDetachEmail extends RpcRequestMessage
+  @header: 0x7b
+
+  @schema:
+    email: { n: 1, type: "int32", rule: "required" }
+    accessHash: { n: 2, type: "int64", rule: "required" }
+
+  constructor: (@email, @accessHash) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("RequestDetachEmail", bodyBytes)
+
+    
+class RequestChangePhoneTitle extends RpcRequestMessage
+  @header: 0x7c
+
+  @schema:
+    phoneId: { n: 1, type: "int32", rule: "required" }
+    title: { n: 2, type: "string", rule: "required" }
+
+  constructor: (@phoneId, @title) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("RequestChangePhoneTitle", bodyBytes)
+
+    
+class RequestChangeEmailTitle extends RpcRequestMessage
+  @header: 0x7d
+
+  @schema:
+    emailId: { n: 1, type: "int32", rule: "required" }
+    title: { n: 2, type: "string", rule: "required" }
+
+  constructor: (@emailId, @title) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("RequestChangeEmailTitle", bodyBytes)
 
     
 class RequestImportContacts extends RpcRequestMessage
@@ -584,9 +665,10 @@ class RequestEditGroupTitle extends RpcRequestMessage
 
   @schema:
     groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
+    rid: { n: 4, type: "int64", rule: "required" }
     title: { n: 3, type: "string", rule: "required" }
 
-  constructor: (@groupPeer, @title) ->
+  constructor: (@groupPeer, @rid, @title) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -600,9 +682,10 @@ class RequestEditGroupAvatar extends RpcRequestMessage
 
   @schema:
     groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
+    rid: { n: 4, type: "int64", rule: "required" }
     fileLocation: { n: 3, type: "FileLocation", rule: "required" }
 
-  constructor: (@groupPeer, @fileLocation) ->
+  constructor: (@groupPeer, @rid, @fileLocation) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -616,8 +699,9 @@ class RequestRemoveGroupAvatar extends RpcRequestMessage
 
   @schema:
     groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
+    rid: { n: 4, type: "int64", rule: "required" }
 
-  constructor: (@groupPeer) ->
+  constructor: (@groupPeer, @rid) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -631,9 +715,10 @@ class RequestInviteUser extends RpcRequestMessage
 
   @schema:
     groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
+    rid: { n: 4, type: "int64", rule: "required" }
     user: { n: 3, type: "UserOutPeer", rule: "required" }
 
-  constructor: (@groupPeer, @user) ->
+  constructor: (@groupPeer, @rid, @user) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -647,8 +732,9 @@ class RequestLeaveGroup extends RpcRequestMessage
 
   @schema:
     groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
+    rid: { n: 2, type: "int64", rule: "required" }
 
-  constructor: (@groupPeer) ->
+  constructor: (@groupPeer, @rid) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -657,35 +743,21 @@ class RequestLeaveGroup extends RpcRequestMessage
     Protobuf.decode("RequestLeaveGroup", bodyBytes)
 
     
-class RequestDeleteGroup extends RpcRequestMessage
-  @header: 0x61
-
-  @schema:
-    groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
-
-  constructor: (@groupPeer) ->
-
-  encode: () ->
-    Protobuf.encode(@)
-
-  @decode: (bodyBytes) ->
-    Protobuf.decode("RequestDeleteGroup", bodyBytes)
-
-    
-class RequestRemoveUser extends RpcRequestMessage
+class RequestKickUser extends RpcRequestMessage
   @header: 0x47
 
   @schema:
     groupPeer: { n: 1, type: "GroupOutPeer", rule: "required" }
+    rid: { n: 4, type: "int64", rule: "required" }
     user: { n: 3, type: "UserOutPeer", rule: "required" }
 
-  constructor: (@groupPeer, @user) ->
+  constructor: (@groupPeer, @rid, @user) ->
 
   encode: () ->
     Protobuf.encode(@)
 
   @decode: (bodyBytes) ->
-    Protobuf.decode("RequestRemoveUser", bodyBytes)
+    Protobuf.decode("RequestKickUser", bodyBytes)
 
     
 class RequestLoadHistory extends RpcRequestMessage
@@ -1271,10 +1343,12 @@ class ResponseGetDifference extends RpcResponseMessage
     state: { n: 2, type: "bytes", rule: "required" }
     users: { n: 3, type: "User", rule: "repeated" }
     groups: { n: 6, type: "Group", rule: "repeated" }
+    phones: { n: 7, type: "Phone", rule: "repeated" }
+    emails: { n: 8, type: "Email", rule: "repeated" }
     updates: { n: 4, type: "DifferenceUpdate", rule: "repeated" }
     needMore: { n: 5, type: "bool", rule: "required" }
 
-  constructor: (@seq, @state, @users, @groups, @updates, @needMore) ->
+  constructor: (@seq, @state, @users, @groups, @phones, @emails, @updates, @needMore) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1312,8 +1386,10 @@ class FatSeqUpdate extends UpdateBoxMessage
     update: { n: 4, type: "bytes", rule: "required" }
     users: { n: 5, type: "User", rule: "repeated" }
     groups: { n: 6, type: "Group", rule: "repeated" }
+    phones: { n: 7, type: "Phone", rule: "repeated" }
+    emails: { n: 8, type: "Email", rule: "repeated" }
 
-  constructor: (@seq, @state, @update, @users, @groups) ->
+  constructor: (@seq, @state, @update, @users, @groups, @phones, @emails) ->
     @updateHeader = update.constructor.header
 
   encode: () ->
@@ -1404,6 +1480,167 @@ class UpdateUserLocalNameChanged extends UpdateMessage
     Protobuf.decode("UpdateUserLocalNameChanged", bodyBytes)
 
     
+class UpdateUserPhoneAdded extends UpdateMessage
+  @header: 0x57
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    phoneId: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@uid, @phoneId) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateUserPhoneAdded", bodyBytes)
+
+    
+class UpdateUserPhoneRemoved extends UpdateMessage
+  @header: 0x58
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    phoneId: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@uid, @phoneId) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateUserPhoneRemoved", bodyBytes)
+
+    
+class UpdatePhoneTitleChanged extends UpdateMessage
+  @header: 0x59
+
+  @schema:
+    phoneId: { n: 2, type: "int32", rule: "required" }
+    title: { n: 3, type: "string", rule: "required" }
+
+  constructor: (@phoneId, @title) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdatePhoneTitleChanged", bodyBytes)
+
+    
+class UpdatePhoneMoved extends UpdateMessage
+  @header: 0x65
+
+  @schema:
+    phoneId: { n: 1, type: "int32", rule: "required" }
+    uid: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@phoneId, @uid) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdatePhoneMoved", bodyBytes)
+
+    
+class UpdateUserEmailAdded extends UpdateMessage
+  @header: 0x60
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    emailId: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@uid, @emailId) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateUserEmailAdded", bodyBytes)
+
+    
+class UpdateUserEmailRemoved extends UpdateMessage
+  @header: 0x61
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    emailId: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@uid, @emailId) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateUserEmailRemoved", bodyBytes)
+
+    
+class UpdateEmailTitleChanged extends UpdateMessage
+  @header: 0x62
+
+  @schema:
+    emailId: { n: 1, type: "int32", rule: "required" }
+    title: { n: 2, type: "string", rule: "required" }
+
+  constructor: (@emailId, @title) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateEmailTitleChanged", bodyBytes)
+
+    
+class UpdateEmailMoved extends UpdateMessage
+  @header: 0x66
+
+  @schema:
+    emailId: { n: 1, type: "int32", rule: "required" }
+    uid: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@emailId, @uid) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateEmailMoved", bodyBytes)
+
+    
+class UpdateUserContactsChanged extends UpdateMessage
+  @header: 0x56
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    phones: { n: 2, type: "int32", rule: "repeated" }
+    emails: { n: 3, type: "int32", rule: "repeated" }
+
+  constructor: (@uid, @phones, @emails) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateUserContactsChanged", bodyBytes)
+
+    
+class UpdateUserStateChanged extends UpdateMessage
+  @header: 0x64
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    state: { n: 2, type: "UserState", rule: "required" }
+
+  constructor: (@uid, @state) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateUserStateChanged", bodyBytes)
+
+    
 class UpdateContactRegistered extends UpdateMessage
   @header: 0x5
 
@@ -1419,6 +1656,22 @@ class UpdateContactRegistered extends UpdateMessage
 
   @decode: (bodyBytes) ->
     Protobuf.decode("UpdateContactRegistered", bodyBytes)
+
+    
+class UpdateEmailContactRegistered extends UpdateMessage
+  @header: 0x78
+
+  @schema:
+    emailId: { n: 1, type: "int32", rule: "required" }
+    uid: { n: 2, type: "int32", rule: "required" }
+
+  constructor: (@emailId, @uid) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("UpdateEmailContactRegistered", bodyBytes)
 
     
 class UpdateContactsAdded extends UpdateMessage
@@ -1658,10 +1911,11 @@ class UpdateGroupInvite extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
+    rid: { n: 9, type: "int64", rule: "required" }
     inviteUid: { n: 5, type: "int32", rule: "required" }
     date: { n: 8, type: "int64", rule: "required" }
 
-  constructor: (@groupId, @inviteUid, @date) ->
+  constructor: (@groupId, @rid, @inviteUid, @date) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1675,11 +1929,12 @@ class UpdateGroupUserAdded extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
+    rid: { n: 5, type: "int64", rule: "required" }
     uid: { n: 2, type: "int32", rule: "required" }
     inviterUid: { n: 3, type: "int32", rule: "required" }
     date: { n: 4, type: "int64", rule: "required" }
 
-  constructor: (@groupId, @uid, @inviterUid, @date) ->
+  constructor: (@groupId, @rid, @uid, @inviterUid, @date) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1693,10 +1948,11 @@ class UpdateGroupUserLeave extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
+    rid: { n: 4, type: "int64", rule: "required" }
     uid: { n: 2, type: "int32", rule: "required" }
     date: { n: 3, type: "int64", rule: "required" }
 
-  constructor: (@groupId, @uid, @date) ->
+  constructor: (@groupId, @rid, @uid, @date) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1710,11 +1966,12 @@ class UpdateGroupUserKick extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
+    rid: { n: 5, type: "int64", rule: "required" }
     uid: { n: 2, type: "int32", rule: "required" }
     kickerUid: { n: 3, type: "int32", rule: "required" }
     date: { n: 4, type: "int64", rule: "required" }
 
-  constructor: (@groupId, @uid, @kickerUid, @date) ->
+  constructor: (@groupId, @rid, @uid, @kickerUid, @date) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1728,7 +1985,7 @@ class UpdateGroupMembersUpdate extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
-    members: { n: 2, type: "int32", rule: "repeated" }
+    members: { n: 2, type: "Member", rule: "repeated" }
 
   constructor: (@groupId, @members) ->
 
@@ -1744,11 +2001,12 @@ class UpdateGroupTitleChanged extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
+    rid: { n: 5, type: "int64", rule: "required" }
     uid: { n: 2, type: "int32", rule: "required" }
     title: { n: 3, type: "string", rule: "required" }
     date: { n: 4, type: "int64", rule: "required" }
 
-  constructor: (@groupId, @uid, @title, @date) ->
+  constructor: (@groupId, @rid, @uid, @title, @date) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1762,11 +2020,12 @@ class UpdateGroupAvatarChanged extends UpdateMessage
 
   @schema:
     groupId: { n: 1, type: "int32", rule: "required" }
+    rid: { n: 5, type: "int64", rule: "required" }
     uid: { n: 2, type: "int32", rule: "required" }
     avatar: { n: 3, type: "Avatar", rule: "optional" }
     date: { n: 4, type: "int64", rule: "required" }
 
-  constructor: (@groupId, @uid, @avatar, @date) ->
+  constructor: (@groupId, @rid, @uid, @avatar, @date) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -1925,6 +2184,40 @@ class AuthSession
     Protobuf.decode("AuthSession", bodyBytes)
 
     
+class Phone
+
+  @schema:
+    id: { n: 1, type: "int32", rule: "required" }
+    accessHash: { n: 2, type: "int64", rule: "required" }
+    phone: { n: 3, type: "int64", rule: "required" }
+    phoneTitle: { n: 4, type: "string", rule: "required" }
+
+  constructor: (@id, @accessHash, @phone, @phoneTitle) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("Phone", bodyBytes)
+
+    
+class Email
+
+  @schema:
+    id: { n: 1, type: "int32", rule: "required" }
+    accessHash: { n: 2, type: "int64", rule: "required" }
+    email: { n: 3, type: "string", rule: "required" }
+    emailTitle: { n: 4, type: "string", rule: "required" }
+
+  constructor: (@id, @accessHash, @email, @emailTitle) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("Email", bodyBytes)
+
+    
 class User
 
   @schema:
@@ -1936,8 +2229,11 @@ class User
     keyHashes: { n: 6, type: "int64", rule: "repeated" }
     phone: { n: 7, type: "int64", rule: "required" }
     avatar: { n: 8, type: "Avatar", rule: "optional" }
+    phones: { n: 9, type: "int32", rule: "repeated" }
+    emails: { n: 10, type: "int32", rule: "repeated" }
+    userState: { n: 11, type: "UserState", rule: "required" }
 
-  constructor: (@id, @accessHash, @name, @localName, @sex, @keyHashes, @phone, @avatar) ->
+  constructor: (@id, @accessHash, @name, @localName, @sex, @keyHashes, @phone, @avatar, @phones, @emails, @userState) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -2109,6 +2405,20 @@ class ServiceExChangedAvatar extends ServiceExtension
     Protobuf.decode("ServiceExChangedAvatar", bodyBytes)
 
     
+class ServiceExEmailContactRegistered extends ServiceExtension
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+
+  constructor: (@uid) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("ServiceExEmailContactRegistered", bodyBytes)
+
+    
 class FileMessage extends Message
 
   @schema:
@@ -2215,7 +2525,7 @@ class Group
     avatar: { n: 4, type: "Avatar", rule: "optional" }
     isMember: { n: 6, type: "bool", rule: "required" }
     adminUid: { n: 8, type: "int32", rule: "required" }
-    members: { n: 9, type: "int32", rule: "repeated" }
+    members: { n: 9, type: "Member", rule: "repeated" }
     createDate: { n: 10, type: "int64", rule: "required" }
 
   constructor: (@id, @accessHash, @title, @avatar, @isMember, @adminUid, @members, @createDate) ->
@@ -2227,6 +2537,22 @@ class Group
     Protobuf.decode("Group", bodyBytes)
 
     
+class Member
+
+  @schema:
+    uid: { n: 1, type: "int32", rule: "required" }
+    inviterUid: { n: 2, type: "int32", rule: "required" }
+    date: { n: 3, type: "int64", rule: "required" }
+
+  constructor: (@uid, @inviterUid, @date) ->
+
+  encode: () ->
+    Protobuf.encode(@)
+
+  @decode: (bodyBytes) ->
+    Protobuf.decode("Member", bodyBytes)
+
+    
 class HistoryMessage
 
   @schema:
@@ -2234,8 +2560,9 @@ class HistoryMessage
     rid: { n: 2, type: "int64", rule: "required" }
     date: { n: 3, type: "int64", rule: "required" }
     message: { n: 5, type: "MessageContent", rule: "required" }
+    state: { n: 6, type: "MessageState", rule: "optional" }
 
-  constructor: (@senderUid, @rid, @date, @message) ->
+  constructor: (@senderUid, @rid, @date, @message, @state) ->
 
   encode: () ->
     Protobuf.encode(@)
@@ -2254,8 +2581,9 @@ class Dialog
     rid: { n: 6, type: "int64", rule: "required" }
     date: { n: 7, type: "int64", rule: "required" }
     message: { n: 8, type: "MessageContent", rule: "required" }
+    state: { n: 9, type: "MessageState", rule: "optional" }
 
-  constructor: (@peer, @unreadCount, @sortDate, @senderUid, @rid, @date, @message) ->
+  constructor: (@peer, @unreadCount, @sortDate, @senderUid, @rid, @date, @message, @state) ->
 
   encode: () ->
     Protobuf.encode(@)

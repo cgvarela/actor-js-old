@@ -256,7 +256,7 @@ class SecretAPI
     @rpcRequest(new PM.RequestGetContacts(hash), f)
 
   requestPublicKeys: (keys, f) ->
-    @rpcRequest(new PM.RequestPublicKeys(keys), f)
+    @rpcRequest(new PM.ResponseGetPublicKeys(keys), f)
 
   requestSendMessage: (uid, accessHash, randomId, message, f) ->
     @rpcRequest(new PM.RequestSendMessage(uid, accessHash, randomId, message), f)

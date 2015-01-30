@@ -31,12 +31,12 @@ test.controller('WSController', ['$scope', function($scope) {
     });
   }
 
-  // var updatesDiv = document.getElementById("updates");
-  // api.addUpdateListener(function (err, update) {
-  //   if (update) {
-  //     updatesDiv.appendChild(document.createElement("<div>"+ JSON.stringify(update) + "</div>"));
-  //   }
-  // });
+  var updatesDiv = document.getElementById("updates");
+  api.addUpdateListener(function (err, update) {
+     if (update) {
+       updatesDiv.appendChild(document.createElement("<div>"+ JSON.stringify(update) + "</div>"));
+     }
+  });
 
   $scope.smsCode = "3333";
   $scope.phoneNumber = "75553867011";
@@ -56,7 +56,7 @@ test.controller('WSController', ['$scope', function($scope) {
   loadKeys();
 
   $scope.genKeys = function() {
-    var keypair = api.genKeyPair()
+    var keypair = api.genKeyPair();
     $scope.publicKey = keypair.publicKey;
     $scope.privateKey = keypair.privateKey;
     $scope.publicKeyBytes = forge.asn1.toDer(pki.publicKeyToAsn1($scope.publicKey)).getBytes();
@@ -65,24 +65,26 @@ test.controller('WSController', ['$scope', function($scope) {
     loadKeys();
   };
 
-  // $scope.usersPublicKeys = getFromStorage("usersPublicKeys") || {};
-  // $scope.importPublicKeys = function (user) {
-  //   var keys = [];
-  //   user.keyHashes.forEach(function (hash){
-  //     keys.push(new ActorMessages.PublicKeyRequest(user.uid, user.accessHash, hash));
-  //   });
-  //   console.log("importPublicKeys for ", user);
-  //   api.requestPublicKeys(keys, function (err, res) {
-  //     console.log("rpc requestPublicKeys: ", res, ", err: ", err);
-  //     $scope.$apply(function () {
-  //       console.log("import user: ", user);
-  //       $scope.usersPublicKeys[user.uid] = res.keys;
-  //       store("usersPublicKeys", $scope.usersPublicKeys);
-  //       user.canSendMessage = true;
-  //       store("importedContacts", $scope.importedContacts);
-  //     });
-  //   });
-  // };
+  $scope.usersPublicKeys = getFromStorage("usersPublicKeys") || {};
+  $scope.importPublicKeys = function (user) {
+     var keys = [];
+     user.keyHashes.forEach(function (hash){
+       console.log("parseLong(user.accessHash), parseLong(hash):", parseLong(user.accessHash).toString(), parseLong(hash).toString());
+       keys.push(new PM.PublicKeyRequest(user.id, parseLong(user.accessHash), parseLong(hash)));
+     });
+     console.log("keys:",keys);
+     console.log("importPublicKeys for ", user);
+     api.requestPublicKeys(keys, function (err, res) {
+       console.log("rpc requestPublicKeys: ", res, ", err: ", err);
+       $scope.$apply(function () {
+         console.log("import user: ", user);
+         $scope.usersPublicKeys[user.uid] = res.keys;
+         store("usersPublicKeys", $scope.usersPublicKeys);
+         user.canSendMessage = true;
+         store("importedContacts", $scope.importedContacts);
+       });
+     });
+  };
 
   function getFromStorage(key) {
     var res = localStorage.getItem(key);
@@ -106,12 +108,6 @@ test.controller('WSController', ['$scope', function($scope) {
       console.log("rpc sign up res: ", res, ", err: ", err);
     })
   };
-
-  // if ($scope.user) {
-  //   api.requestGetDifference(0, null, function (err, res) {
-  //     console.log("rpc GetDifference: ", res, ", err: ", err);
-  //   });
-  // }
 
   $scope.smsHash = null;
   $scope.getSmsCode = function () {
@@ -139,7 +135,6 @@ test.controller('WSController', ['$scope', function($scope) {
     api.requestImportContacts(phones, function (err, res) {
       if (res) {
         console.log("res", res);
-
         api.requestGetContacts("", function (err, res) {
           console.log("requestGetContacts", res);
           store("importedContacts", res.users);
@@ -160,59 +155,24 @@ test.controller('WSController', ['$scope', function($scope) {
     return Long.fromString(forge.util.bytesToHex(forge.random.getBytesSync(4)), 16).getLowBits();
   }
 
-//  $scope.sendMessage = function (user) {
-//    var plainText = 'test#' + nextInt(),
-//      aesKey = forge.random.getBytesSync(32),
-//      aesIv = forge.random.getBytesSync(16),
-//      aesFullKey = aesKey + aesIv,
-//      randomId = nextLong(),
-//      encMessage = api.aesEncrypt(api.buildTextMessage(plainText, randomId), aesKey, aesIv),
-//      ownKeys = [new ActorMessages.EncryptedAESKey($scope.publicKeyHash, api.rsaEncrypt(aesFullKey, $scope.publicKey))],
-//      encRSAMessage = new ActorMessages.EncryptedRSAMessage(encMessage, api.encryptAESKeys(aesFullKey, $scope.usersPublicKeys[user.uid]), ownKeys);
-//
-//    console.log("encMessage: ", encMessage);
-//    console.log("plainText: '" + plainText + "', aesKey: " + forge.util.encode64(aesKey) + ", aesIv: " + forge.util.encode64(aesIv));
-//    console.log("encRSAMessage:", encRSAMessage.serialize());
-//
-//    api.requestSendMessage(user.uid, user.accessHash, randomId, encRSAMessage, function (err, res) {
-//      if (res) {
-////        $scope.$apply(function () {
-////          $scope.importedContacts = res;
-////        })
-//      }
-//      console.log("rpc send message: ", res, ", err: ", err);
-//    });
-//  };
-}]);
+  $scope.sendMessage = function (user) {
+    var plainText = 'test#' + nextInt(),
+      aesKey = forge.random.getBytesSync(32),
+      aesIv = forge.random.getBytesSync(16),
+      aesFullKey = aesKey + aesIv,
+      randomId = nextLong(),
+      encMessage = api.aesEncrypt(api.buildTextMessage(plainText, randomId), aesKey, aesIv),
+      ownKeys = [new ActorMessages.EncryptedAESKey($scope.publicKeyHash, api.rsaEncrypt(aesFullKey, $scope.publicKey))],
+      encRSAMessage = new ActorMessages.EncryptedRSAMessage(encMessage, api.encryptAESKeys(aesFullKey, $scope.usersPublicKeys[user.uid]), ownKeys);
 
-//var p = ActorMessages,
-//    obj = new MTPackage(0, 0, new MessageBox(0, new p.Ping(90)));
-//
-////var i = VarIntCodec.encode(Long.fromString("9223372036854775807"))
-////i.printDebug()
-////console.log("VarIntCodec encode:", i)
-////var di = VarIntCodec.decode(i)
-////console.log("VarIntCodec decode:", di, di.toString())
-////console.log("obj: ", obj);
-//
-////var s = BytesCodec.encode("wowCool");
-////console.log("s: ", s)
-////s.printDebug()
-////
-////var b = new ByteBuffer()
-////b.append(s)
-////b.append("NOOOOOOO")
-////b.flip()
-////b.printDebug()
-////
-////var ds = BytesCodec.decode(b);
-////console.log("ds: ")
-////ds._1.printDebug()
-////ds._2.printDebug()
-//
-//var ping = new p.Ping("9"),
-//  mb = new MessageBox(3, ping),
-//  pkg = new MTPackage(1, 2, mb),
-//  raw = pkg.encode();
-//
-//raw.printDebug()
+    console.log("encMessage: ", encMessage);
+    console.log("plainText: '" + plainText + "', aesKey: " + forge.util.encode64(aesKey) + ", aesIv: " + forge.util.encode64(aesIv));
+    console.log("encRSAMessage:", encRSAMessage.serialize());
+
+    api.requestSendMessage(user.uid, user.accessHash, randomId, encRSAMessage, function (err, res) {
+      if (res) {
+      }
+      console.log("rpc send message: ", res, ", err: ", err);
+    });
+  };
+}]);

@@ -32,41 +32,20 @@ parseLong = (obj) ->
     Long.fromInt(obj)
   else if _.isString(obj)
     Long.fromString(obj)
+  else if obj.low? && obj.high?
+    new Long(obj.low, obj.high, !!obj.unsigned)
   else
     throw new Error("Unknown type instance '#{typeof obj}': #{obj}")
 
-
 class VarIntCodec extends Codec
-  @maxSize: 10
-
-  @encode: (obj, buf) ->
-    long = parseLong(obj)
-    buf = ByteBuffer.alloc(buf, @maxSize)
-    while long.greaterThan(0x7f)
-      buf.writeByte(long.and(0xff).or(0x80).toInt())
-      long = long.shiftRight(7)
-    buf.writeByte(long.toInt())
+  @encode: (n, buf) ->
+    buf = ByteBuffer.alloc(buf)
+    buf.writeVarint32(parseInt(n))
     buf.flipChain()
     buf
 
   @decode: (buf) ->
-    f = (position, acc, maxSize) ->
-      if position > buf.limit
-        acc
-      else
-        if position > maxSize then throw new Exception("Exceeded max size of var int")
-        b = buf.readByte() & 0xff
-        n = Long.fromInt((b & 0x7f)).shiftLeft(7 * position)
-        res = acc.xor(n)
-        if b > 0x7f
-          f(position + 1, res)
-        else
-          res
-    tuple2(f(0, new Long(), @maxSize), buf)
-
-  @decodeInt: (buf) ->
-    res = @decode(buf)
-    tuple2(res._1.toInt(), res._2)
+    tuple2(buf.readVarint32(), buf)
 
 class StringCodec extends Codec
   @encode: (str, buf) ->
@@ -77,7 +56,7 @@ class StringCodec extends Codec
     buf
 
   @decode: (buf) ->
-    l = VarIntCodec.decodeInt(buf)
+    l = VarIntCodec.decode(buf)
     tuple2(l._2.readUTF8String(l._1), l._2)
 
 class BoolCodec extends Codec
@@ -107,7 +86,7 @@ class BytesCodec extends Codec
     buf
 
   @decode: (buf) ->
-    l = VarIntCodec.decodeInt(buf)
+    l = VarIntCodec.decode(buf)
     tuple2(l._2.slice(l._2.offset, l._2.offset + l._1), l._2.slice(l._2.offset + l._1))
 
 class LongCodec extends Codec
@@ -130,7 +109,7 @@ class LongsCodec extends Codec
 
   @decode: (buf) ->
     arr = []
-    l = VarIntCodec.decodeInt(buf)
+    l = VarIntCodec.decode(buf)
     i = l._1
     while i-- > 0
       arr.push(l._2.readLong())
@@ -195,21 +174,22 @@ class Protobuf
       fieldNumber = field.n || throw new Error("Empty field number")
       rule = field.rule || throw new Error("Empty field rule")
       f = (value) =>
+        throw new Error("#{obj.constructor.name}.#{item} is #{value}") if value == undefined
         switch field.type
           when "int32", "uint32"
-            @writeVarInt(fieldNumber, value, stream)
+            @writeVarInt32(fieldNumber, value, stream)
           when "int64", "uint64"
-            @writeVarInt(fieldNumber, value, stream)
+            @writeVarInt64(fieldNumber, value, stream)
           when "float" then @writeFloat32(fieldNumber, value, stream)
           when "double" then @writeFloat64(fieldNumber, value, stream)
-          when "bool" then @writeVarInt(fieldNumber, (if value then 1 else 0), stream)
+          when "bool" then @writeVarInt32(fieldNumber, (if value then 1 else 0), stream)
           when "string" then @writeBytes(fieldNumber, value, stream)
           when "bytes" then @writeBytes(fieldNumber, value, stream)
           else
             if value.encode?
               @writeBytes(fieldNumber, value.encode(), stream)
             else if scope[field.type].schema? && scope[field.type].schema instanceof Array
-              @writeVarInt(fieldNumber, value, stream)
+              @writeVarInt32(fieldNumber, value, stream)
             else
               throw new Error("Unknown type: #{field.type}; method encode not found, can't be serialized")
       switch rule
@@ -258,19 +238,19 @@ class Protobuf
     readValue = (type) =>
       switch type
         when "int32", "uint32"
-          @readVarInt(stream).toNumber()
+          @readVarInt32(stream)
         when "int64", "uint64"
-          @readVarInt(stream)
+          @readVarInt64(stream)
         when "float" then @readFloat32(stream)
         when "double" then @readFloat64(stream)
-        when "bool" then @readVarInt(stream).toNumber() == 1
+        when "bool" then @readVarInt32(stream) == 1
         when "string" then @readBytes(stream).toUTF8()
         when "bytes" then @readBytes(stream)
         else
           if scope[type]? && scope[type].decode?
             scope[type].decode(@readBytes(stream))
           else if scope[type].schema? && scope[type].schema instanceof Array
-            @readVarInt(stream).toNumber()
+            @readVarInt32(stream)
           else
             throw new Error("Unknown type: #{type}; method decode not found, can't be serialized")
 
@@ -293,7 +273,7 @@ class Protobuf
         if fieldSchema.typeAlias == type
           put(readValue(fieldSchema.type), fieldSchema)
         else if fieldSchema.isInteger && type == @PROTOBUF_TYPES.VARINT # || type == @PROTOBUF_TYPES.BITS32 || type == @PROTOBUF_TYPES.BITS64)
-          value = @readVarInt(stream)
+          value = @readVarInt32(stream)
           if fieldSchema.type.matches("int64$") then put(value, fieldSchema)
           else put(value.toNumber(), fieldSchema)
         else
@@ -302,7 +282,7 @@ class Protobuf
           throw new Error("#{klass}.#{fieldSchema.column} has different type than in stream: #{fieldSchema.typeAlias} vs #{type}")
       else
         console.error("fieldSchema is unknown!")
-        throw new Error("fieldSchema is unknown!")
+        # throw new Error("fieldSchema is unknown!")
 
     for column, field of schema
       if field.rule == "required" && !obj[column]?
@@ -318,10 +298,15 @@ class Protobuf
     tag = (fieldNumber << 3) | wireType
     stream.writeByte(tag)
 
-  # int32, int64, uint32, uint64, sint32, sint64, bool, enum
-  @writeVarInt: (fieldNumber, value, stream) ->
+  # int32, uint32, bool, enum
+  @writeVarInt32: (fieldNumber, value, stream) ->
     @writeTag(fieldNumber, @PROTOBUF_TYPES.VARINT, stream)
-    varint.encode(value, stream)
+    stream.writeVarint32(parseInt(value))
+
+  # int64, uint64
+  @writeVarInt64: (fieldNumber, value, stream) ->
+    @writeTag(fieldNumber, @PROTOBUF_TYPES.VARINT, stream)
+    stream.writeVarint64(parseLong(value))
 
   # string, bytes, embedded messages, packed repeated fields
   @writeBytes: (fieldNumber, value, stream) ->
@@ -331,12 +316,12 @@ class Protobuf
   # fixed32, sfixed32, float
   @writeInt: (fieldNumber, value, stream) ->
     @writeTag(fieldNumber, @PROTOBUF_TYPES.BITS32, stream)
-    int32.encode(value, stream)
+    int32.encode(parseInt(value), stream)
 
   # fixed64, sfixed64, double
   @writeLong: (fieldNumber, value, stream) ->
     @writeTag(fieldNumber, @PROTOBUF_TYPES.BITS64, stream)
-    long.encode(value, stream)
+    long.encode(parseLong(value), stream)
 
   # float
   @writeFloat32: (fieldNumber, value, stream) ->
@@ -348,11 +333,14 @@ class Protobuf
     @writeTag(fieldNumber, @PROTOBUF_TYPES.BITS64, stream)
     stream.writeFloat64(value)
 
-  @readVarInt: (stream) ->
-    varint.decode(stream).value
+  @readVarInt32: (stream) ->
+    stream.readVarint32()
+
+  @readVarInt64: (stream) ->
+    stream.readVarint64()
 
   @readBytes: (stream) ->
-    length = varint.decodeInt(stream).value
+    length = varint.decode(stream).value
     res = stream.copy(stream.offset, stream.offset + length)
     stream.skip(length)
     res
@@ -685,30 +673,4 @@ class InternalError extends RpcResponse
     tryAgainDelay = int32.decode(buf).value
     new InternalError(canTryAgain, tryAgainDelay)
 
-window.ActorMessages =
-  Ping: Ping
-  Pong: Pong
-  RpcRequestBox: RpcRequestBox
-  RpcResponseBox: RpcResponseBox
-  UpdateBox: UpdateBox
-  MessageAck: MessageAck
-  UnsentMessage: UnsentMessage
-  UnsentResponse: UnsentResponse
-  RequestResend: RequestResend
-  Container: Container
-  NewSession: NewSession
-  Drop: Drop
-  RequestAuthId: RequestAuthId
-  ResponseAuthId: ResponseAuthId
-  MessageBox: MessageBox
-  MTPackage: MTPackage
-  MTPackageBox: MTPackageBox
-  TransportMessage: TransportMessage
-  RpcRequest: RpcRequest
-  Request: Request
-  RpcResponse: RpcResponse
-  Ok: Ok
-  Error: Error
-  ConnectionNotInitedError: ConnectionNotInitedError
-  FloodWait: FloodWait
-  InternalError: InternalError
+window.ActorMessages = scope
